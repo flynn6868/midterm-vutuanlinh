@@ -370,6 +370,52 @@
         "count": 3
       },
       "how_computed": "Accepted: B-001, B-003 (starts 09:45 when B-001 ends), B-004. Rejected: B-002 conflict, B-005 bad date, B-006 conflict, B-007 after close. 3 items, by hand"
+    },
+    {
+      "name": "cannot_cancel_completed",
+      "type": "engineered_failure_repeat",
+      "input": [
+        {
+          "do": "create",
+          "as": "client",
+          "data": {
+            "request_id": "T-8",
+            "client": "client-a",
+            "service_id": "S1",
+            "stylist": "Ana",
+            "start": "2026-11-02 09:00"
+          }
+        },
+        {
+          "do": "move",
+          "as": "staff",
+          "item": 1,
+          "to": "confirmed"
+        },
+        {
+          "do": "move",
+          "as": "staff",
+          "item": 1,
+          "to": "arrived"
+        },
+        {
+          "do": "move",
+          "as": "staff",
+          "item": 1,
+          "to": "completed"
+        },
+        {
+          "do": "move",
+          "as": "client",
+          "item": 1,
+          "to": "cancelled"
+        }
+      ],
+      "expected": {
+        "outcome": "illegal_move",
+        "state": "completed"
+      },
+      "how_computed": "completed is a final state; any move out of it is illegal_move and the state remains completed"
     }
   ]
 }
