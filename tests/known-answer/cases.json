@@ -1,1 +1,375 @@
-{"cases": []}
+{
+  "cases": [
+    {
+      "name": "happy_path_staff_confirms",
+      "type": "happy_path",
+      "input": [
+        {
+          "do": "create",
+          "as": "client",
+          "data": {
+            "request_id": "T-1",
+            "client": "client-a",
+            "service_id": "S1",
+            "stylist": "Ana",
+            "start": "2026-11-02 09:00"
+          }
+        },
+        {
+          "do": "move",
+          "as": "staff",
+          "item": 1,
+          "to": "confirmed"
+        }
+      ],
+      "expected": {
+        "outcome": "accepted",
+        "state": "confirmed"
+      },
+      "how_computed": "staff may move booked -> confirmed, so accepted and the state becomes confirmed"
+    },
+    {
+      "name": "client_cannot_confirm",
+      "type": "role_not_allowed",
+      "input": [
+        {
+          "do": "create",
+          "as": "client",
+          "data": {
+            "request_id": "T-2",
+            "client": "client-a",
+            "service_id": "S1",
+            "stylist": "Ana",
+            "start": "2026-11-02 09:00"
+          }
+        },
+        {
+          "do": "move",
+          "as": "client",
+          "item": 1,
+          "to": "confirmed"
+        }
+      ],
+      "expected": {
+        "outcome": "not_permitted",
+        "state": "booked"
+      },
+      "how_computed": "Only staff may move booked -> confirmed; a client tried, so it is rejected and the item stays booked"
+    },
+    {
+      "name": "client_cannot_mark_arrived",
+      "type": "role_not_allowed",
+      "input": [
+        {
+          "do": "create",
+          "as": "client",
+          "data": {
+            "request_id": "T-3",
+            "client": "client-a",
+            "service_id": "S1",
+            "stylist": "Ana",
+            "start": "2026-11-02 09:00"
+          }
+        },
+        {
+          "do": "move",
+          "as": "staff",
+          "item": 1,
+          "to": "confirmed"
+        },
+        {
+          "do": "move",
+          "as": "client",
+          "item": 1,
+          "to": "arrived"
+        }
+      ],
+      "expected": {
+        "outcome": "not_permitted",
+        "state": "confirmed"
+      },
+      "how_computed": "Only staff may move confirmed -> arrived; a client tried, so it is rejected and the item stays confirmed"
+    },
+    {
+      "name": "skip_to_completed",
+      "type": "illegal_move",
+      "input": [
+        {
+          "do": "create",
+          "as": "client",
+          "data": {
+            "request_id": "T-4",
+            "client": "client-a",
+            "service_id": "S1",
+            "stylist": "Ana",
+            "start": "2026-11-02 09:00"
+          }
+        },
+        {
+          "do": "move",
+          "as": "staff",
+          "item": 1,
+          "to": "completed"
+        }
+      ],
+      "expected": {
+        "outcome": "illegal_move",
+        "state": "booked"
+      },
+      "how_computed": "booked -> completed is not in the state table (skips confirmed and arrived), so it is illegal_move and the item stays booked"
+    },
+    {
+      "name": "client_cancels_booked",
+      "type": "cancel",
+      "input": [
+        {
+          "do": "create",
+          "as": "client",
+          "data": {
+            "request_id": "T-5",
+            "client": "client-a",
+            "service_id": "S1",
+            "stylist": "Ana",
+            "start": "2026-11-02 09:00"
+          }
+        },
+        {
+          "do": "move",
+          "as": "client",
+          "item": 1,
+          "to": "cancelled"
+        }
+      ],
+      "expected": {
+        "outcome": "accepted",
+        "state": "cancelled"
+      },
+      "how_computed": "client may cancel from booked, so accepted and the state becomes cancelled"
+    },
+    {
+      "name": "duplicate_request_id",
+      "type": "seeded_failure",
+      "input": [
+        {
+          "do": "create",
+          "as": "client",
+          "data": {
+            "request_id": "T-6",
+            "client": "client-a",
+            "service_id": "S1",
+            "stylist": "Ana",
+            "start": "2026-11-02 09:00"
+          }
+        },
+        {
+          "do": "create",
+          "as": "client",
+          "data": {
+            "request_id": "T-6",
+            "client": "client-b",
+            "service_id": "S1",
+            "stylist": "Ben",
+            "start": "2026-11-02 11:00"
+          }
+        }
+      ],
+      "expected": {
+        "outcome": "duplicate_request"
+      },
+      "how_computed": "request_id T-6 was already used by the first create, so the second is rejected and makes no item"
+    },
+    {
+      "name": "restart_keeps_booking",
+      "type": "restart",
+      "input": [
+        {
+          "do": "create",
+          "as": "client",
+          "data": {
+            "request_id": "T-7",
+            "client": "client-a",
+            "service_id": "S1",
+            "stylist": "Ana",
+            "start": "2026-11-02 09:00"
+          }
+        },
+        {
+          "do": "restart"
+        },
+        {
+          "do": "list"
+        }
+      ],
+      "expected": {
+        "outcome": "accepted",
+        "count": 1
+      },
+      "how_computed": "one booking was created and a restart keeps saved data, so one item"
+    },
+    {
+      "name": "seeded_bad_date_format",
+      "type": "seeded_failure",
+      "input": [
+        {
+          "do": "create",
+          "as": "client",
+          "data": {
+            "request_id": "B-005",
+            "client": "client-e",
+            "service_id": "S4",
+            "stylist": "Ben",
+            "start": "11/02/2026 10:30"
+          }
+        }
+      ],
+      "expected": {
+        "outcome": "bad_date_format"
+      },
+      "how_computed": "B-005 start is 11/02/2026 10:30, not YYYY-MM-DD HH:MM, so it is rejected and makes no item"
+    },
+    {
+      "name": "seeded_after_close",
+      "type": "seeded_failure",
+      "input": [
+        {
+          "do": "create",
+          "as": "client",
+          "data": {
+            "request_id": "B-007",
+            "client": "client-g",
+            "service_id": "S4",
+            "stylist": "Ana",
+            "start": "2026-11-02 16:45"
+          }
+        }
+      ],
+      "expected": {
+        "outcome": "after_close"
+      },
+      "how_computed": "B-007 is S4 (30 min) starting 16:45, so it ends 17:15, after 17:00 close"
+    },
+    {
+      "name": "seeded_conflict",
+      "type": "seeded_failure",
+      "input": [
+        {
+          "do": "create",
+          "as": "client",
+          "data": {
+            "request_id": "B-001",
+            "client": "client-a",
+            "service_id": "S1",
+            "stylist": "Ana",
+            "start": "2026-11-02 09:00"
+          }
+        },
+        {
+          "do": "create",
+          "as": "client",
+          "data": {
+            "request_id": "B-002",
+            "client": "client-b",
+            "service_id": "S2",
+            "stylist": "Ana",
+            "start": "2026-11-02 09:30"
+          }
+        }
+      ],
+      "expected": {
+        "outcome": "conflict"
+      },
+      "how_computed": "B-001 (Ana, S1 45 min) runs 09:00-09:45; B-002 starts 09:30 for the same stylist, so it overlaps and the earlier request keeps the slot"
+    },
+    {
+      "name": "count_after_all_requests",
+      "type": "count_by_hand",
+      "input": [
+        {
+          "do": "create",
+          "as": "client",
+          "data": {
+            "request_id": "B-001",
+            "client": "client-a",
+            "service_id": "S1",
+            "stylist": "Ana",
+            "start": "2026-11-02 09:00"
+          }
+        },
+        {
+          "do": "create",
+          "as": "client",
+          "data": {
+            "request_id": "B-002",
+            "client": "client-b",
+            "service_id": "S2",
+            "stylist": "Ana",
+            "start": "2026-11-02 09:30"
+          }
+        },
+        {
+          "do": "create",
+          "as": "client",
+          "data": {
+            "request_id": "B-003",
+            "client": "client-c",
+            "service_id": "S3",
+            "stylist": "Ana",
+            "start": "2026-11-02 09:45"
+          }
+        },
+        {
+          "do": "create",
+          "as": "client",
+          "data": {
+            "request_id": "B-004",
+            "client": "client-d",
+            "service_id": "S1",
+            "stylist": "Ben",
+            "start": "2026-11-02 09:30"
+          }
+        },
+        {
+          "do": "create",
+          "as": "client",
+          "data": {
+            "request_id": "B-005",
+            "client": "client-e",
+            "service_id": "S4",
+            "stylist": "Ben",
+            "start": "11/02/2026 10:30"
+          }
+        },
+        {
+          "do": "create",
+          "as": "client",
+          "data": {
+            "request_id": "B-006",
+            "client": "client-f",
+            "service_id": "S2",
+            "stylist": "Ben",
+            "start": "2026-11-02 10:00"
+          }
+        },
+        {
+          "do": "create",
+          "as": "client",
+          "data": {
+            "request_id": "B-007",
+            "client": "client-g",
+            "service_id": "S4",
+            "stylist": "Ana",
+            "start": "2026-11-02 16:45"
+          }
+        },
+        {
+          "do": "list"
+        }
+      ],
+      "expected": {
+        "outcome": "accepted",
+        "count": 3
+      },
+      "how_computed": "Accepted: B-001, B-003 (starts 09:45 when B-001 ends), B-004. Rejected: B-002 conflict, B-005 bad date, B-006 conflict, B-007 after close. 3 items, by hand"
+    }
+  ]
+}
