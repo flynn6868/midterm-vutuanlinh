@@ -22,30 +22,53 @@ sys.path.insert(0, str(ROOT))
 os.chdir(ROOT)
 
 
+import tempfile
+import store
+
+
+class AppHandle:
+    def __init__(self, db_path):
+        self.db_path = db_path
+
+
 def new_app():
-    """TODO (yours): start your app with an EMPTY data store and return a handle
-    (for example a Flask test client). Use a temporary database file or an in-memory one
-    so cases do not affect each other."""
-    raise NotImplementedError("write new_app for your app")
+    """Start app with a fresh temporary SQLite database."""
+    fd, path = tempfile.mkstemp(prefix="appt_test_", suffix=".db")
+    os.close(fd)
+    store.init_db(path)
+    return AppHandle(path)
 
 
 def restart_app(app):
-    """TODO (yours): stop and start your app on the SAME data store; return the new handle.
-    The data must still be there afterward."""
-    raise NotImplementedError("write restart_app for your app")
+    """Restart app reusing the same database path."""
+    return AppHandle(app.db_path)
 
 
 def do_step(app, step, items):
-    """TODO (yours): perform one create / move / list step as step["as"] and return a dict
-    in the common vocabulary, for example {"outcome": "accepted", "state": "paid"} or
-    {"outcome": "out_of_stock"} (no "state": a rejected create makes no item) or
-    {"outcome": "accepted", "count": 1} for list.
+    """Execute one step (create / move / list) and return result dict."""
+    action = step["do"]
+    role = step.get("as", "client")
 
-    `items` is the list of item ids created so far in this case (items[0] is item 1);
-    add the new id to it when a create is accepted, so that {"do": "move", "item": 1}
-    can find it. Keys you may return: outcome, state, count, and hand-computed numbers
-    such as total (as JSON numbers, e.g. 98.5)."""
-    raise NotImplementedError("write do_step for your app")
+    if action == "create":
+        res = store.create_appointment(app.db_path, step["data"], as_role=role)
+        if res.get("outcome") == "accepted" and "id" in res:
+            items.append(res["id"])
+            return {"outcome": res["outcome"], "state": res["state"]}
+        return {"outcome": res["outcome"]}
+
+    elif action == "move":
+        item_idx = step["item"] - 1
+        if 0 <= item_idx < len(items):
+            item_id = items[item_idx]
+            return store.move_appointment(
+                app.db_path, item_id, step["to"], as_role=role, reason=step.get("reason")
+            )
+        return {"outcome": "illegal_move"}
+
+    elif action == "list":
+        return store.list_appointments(app.db_path)
+
+    raise ValueError(f"Unknown step action: {action}")
 
 
 def run_case(case):
